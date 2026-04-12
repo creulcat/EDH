@@ -1,0 +1,50 @@
+{
+  "content": null,
+  "embeds": [
+    {
+      "color": "{cfg.color}",
+      "fields": [
+        {
+          "name": "Speler:",
+          "value": "{cfg.player}"
+        },
+        {
+          "name": "Startpunt:",
+          "value": "{position_start}",
+          "inline": true
+        },
+        {
+          "name": "Eindpunt:",
+          "value": "{position_end}",
+          "inline": true
+        },
+        {
+          "name": "Afstand:",
+          "value": "{distance}",
+          "inline": true
+        },
+        {
+          "name": "Truck:",
+          "value": "{truck}",
+          "inline": true
+        },
+        {
+          "name": "Vracht:",
+          "value": "{cargo}",
+          "inline": true
+        },
+        {
+          "name": "Winst:",
+          "value": "{gains}"
+        }
+      ],
+      "author": {
+        "name": "Euro Truck Log",
+        "url": "https://eurotrucksimulator2.com/",
+        "icon_url": "https://eurotrucksimulator2.com/images/logo.png"
+      },
+      "timestamp": "{timestamp}"
+    }
+  ],
+  "attachments": []
+}
