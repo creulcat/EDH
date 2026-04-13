@@ -1,6 +1,6 @@
-# EDH (Euro Truck Log)
+# EDH (Eurotruck Discord Hook)
 
-EDH is a **telemetry plugin** for **Euro Truck Simulator 2** and **American Truck Simulator**. When you **complete a delivery** (job delivered gameplay event), it sends a **Discord webhook** request with a rich embed: player name, origin and destination cities, distance, truck, cargo, and job reward. The in-game name used in materials is **Euro Truck Log** (see embedded embed templates).
+EDH is a **telemetry plugin** for **Euro Truck Simulator 2** and **American Truck Simulator**. When you **complete a delivery**, it sends a **Discord webhook** request with a rich embed: player name, origin and destination cities, distance, truck, cargo, and job reward. The in-game name used in materials is **Euro Truck Log** (see embedded embed templates).
 
 The plugin uses the **SCS Telemetry SDK** (API version 1.01), listens for **configuration** updates (current job and truck) and **gameplay** events, and posts **HTTPS JSON** to Discord via **WinHTTP** on Windows.
 
