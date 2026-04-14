@@ -13,11 +13,12 @@ The plugin uses the **SCS Telemetry SDK** (API version 1.01), listens for **conf
 
 ## Installing in the game
 
-1. Obtain **`edh_plugin.dll`** (build from this repository or use a provided release).
-2. Copy the DLL into the game’s **64-bit plugins** directory:
+1. Install the **latest [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)** for **x64** (the “latest supported” package from Microsoft). The plugin is a native Windows DLL and needs a current VC++ runtime; if the game fails to load the plugin or you see missing-DLL errors, update this redistributable first.
+2. Obtain **`edh_plugin.dll`** (build from this repository or use a provided release).
+3. Copy the DLL into the game’s **64-bit plugins** directory:
    - **ETS2:** `...\Euro Truck Simulator 2\bin\win_x64\plugins\`
    - **ATS:** `...\American Truck Simulator\bin\win_x64\plugins\`
-3. Start the game. The plugin loads with the telemetry API; check the in-game log or `EDH_webhook.log` to confirm it initialized.
+4. Start the game. The plugin loads with the telemetry API; check **`game.log.txt`** or `EDH_webhook.log` to confirm it initialized.
 
 Details on plugin paths and developer commands (for example SDK reload) are in `tools/scs_sdk/readme.txt` once you have the SDK unpacked locally.
 
@@ -88,7 +89,7 @@ If something is missing from telemetry, the template may show `?` for that field
 | Location | What you see |
 |----------|----------------|
 | **`EDH_webhook.log`** | Same profile folder as `edh_webhook.cfg`. Timestamped lines: plugin load, config load, webhook send success/failure. |
-| **`game.log.txt`** | Under the game’s Documents folder; SCS log callback messages from the plugin. |
+| **`game.log.txt`** | The **default Euro Truck Simulator 2 / American Truck Simulator log**: same **Documents** profile folder as `edh_webhook.cfg` (e.g. `%USERPROFILE%\Documents\Euro Truck Simulator 2\game.log.txt`). SCS and the game write here; plugin messages from the telemetry SDK’s log callback appear in this file. |
 | **DebugView** (Windows) | With global Win32 capture, `OutputDebugString` lines from the plugin. |
 
 If you change `edh_webhook.cfg`, restart the game (or use SDK reload/reinit **only if** telemetry plugins are loaded — see SCS SDK readme) so settings are read again.

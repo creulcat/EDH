@@ -67,6 +67,8 @@ static char g_game_id[64];
 
 static void debug_log_line(const char *const text);
 static void debug_log_fmt(const char *const fmt, ...);
+static void edh_plugin_log(const scs_log_type_t type, const char *const text);
+static void edh_plugin_log_fmt(const scs_log_type_t type, const char *const fmt, ...);
 
 /** Parsed from edh_webhook.cfg (discord.embed.*). */
 static char g_cfg_color[64];
@@ -146,12 +148,13 @@ static void edh_ensure_profile_dir_exists(const char *const dir)
 #endif
 
 /**
- * Create %USERPROFILE%\\Documents\\Euro Truck Simulator 2\\edh_webhook.cfg if missing (embedded default.cfg).
+ * Create %USERPROFILE%\\Documents\\…\\edh_webhook.cfg if missing (embedded default.cfg).
  */
 static void ensure_edh_webhook_cfg(void)
 {
 	char dir[512];
 	if (!edh_get_game_profile_dir(dir, sizeof(dir))) {
+		edh_plugin_log(SCS_LOG_TYPE_error, "edh_plugin: could not resolve profile folder for edh_webhook.cfg");
 		return;
 	}
 	edh_ensure_profile_dir_exists(dir);
@@ -159,19 +162,23 @@ static void ensure_edh_webhook_cfg(void)
 	char user_cfg[640];
 #ifdef _WIN32
 	if (sprintf_s(user_cfg, sizeof(user_cfg), "%s\\edh_webhook.cfg", dir) < 0) {
+		edh_plugin_log(SCS_LOG_TYPE_error, "edh_plugin: edh_webhook.cfg path too long");
 		return;
 	}
 	if (GetFileAttributesA(user_cfg) != INVALID_FILE_ATTRIBUTES) {
+		edh_plugin_log_fmt(SCS_LOG_TYPE_message, "edh_plugin: edh_webhook.cfg already present at %s", user_cfg);
 		return;
 	}
 #else
 	if (snprintf(user_cfg, sizeof(user_cfg), "%s/edh_webhook.cfg", dir) >= (int)sizeof(user_cfg)) {
+		edh_plugin_log(SCS_LOG_TYPE_error, "edh_plugin: edh_webhook.cfg path too long");
 		return;
 	}
 	{
 		FILE *const existing = fopen(user_cfg, "rb");
 		if (existing) {
 			fclose(existing);
+			edh_plugin_log_fmt(SCS_LOG_TYPE_message, "edh_plugin: edh_webhook.cfg already present at %s", user_cfg);
 			return;
 		}
 	}
@@ -182,7 +189,7 @@ static void ensure_edh_webhook_cfg(void)
 
 	FILE *const out = fopen(user_cfg, "wb");
 	if (!out) {
-		debug_log_line("[edh_plugin] could not create edh_webhook.cfg in Euro Truck Simulator 2 profile folder");
+		edh_plugin_log_fmt(SCS_LOG_TYPE_error, "edh_plugin: could not create edh_webhook.cfg at %s", user_cfg);
 		return;
 	}
 	const size_t nw = fwrite(payload, 1u, payload_len, out);
@@ -193,10 +200,14 @@ static void ensure_edh_webhook_cfg(void)
 #else
 		remove(user_cfg);
 #endif
-		debug_log_line("[edh_plugin] failed writing edh_webhook.cfg");
+		edh_plugin_log_fmt(SCS_LOG_TYPE_error, "edh_plugin: failed writing edh_webhook.cfg at %s", user_cfg);
 		return;
 	}
-	debug_log_line("[edh_plugin] created edh_webhook.cfg from embedded default (Euro Truck Simulator 2 profile folder)");
+	edh_plugin_log_fmt(
+		SCS_LOG_TYPE_message,
+		"edh_plugin: created edh_webhook.cfg at %s (embedded default)",
+		user_cfg
+	);
 }
 
 static void trim_string(std::string *const s)
@@ -239,7 +250,7 @@ static void load_edh_webhook_cfg(void)
 
 	FILE *const f = fopen(path, "rb");
 	if (!f) {
-		debug_log_fmt("[edh_plugin] could not read %s", path);
+		edh_plugin_log_fmt(SCS_LOG_TYPE_error, "edh_plugin: could not read edh_webhook.cfg at %s", path);
 		return;
 	}
 	fseek(f, 0, SEEK_END);
@@ -247,11 +258,17 @@ static void load_edh_webhook_cfg(void)
 	fseek(f, 0, SEEK_SET);
 	if (sz <= 0 || sz > 65536) {
 		fclose(f);
+		edh_plugin_log_fmt(
+			SCS_LOG_TYPE_warning,
+			"edh_plugin: edh_webhook.cfg at %s is missing or invalid size; using built-in defaults",
+			path
+		);
 		return;
 	}
 	std::string content(static_cast<size_t>(sz), '\0');
 	if (fread(&content[0], 1, static_cast<size_t>(sz), f) != static_cast<size_t>(sz)) {
 		fclose(f);
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "edh_plugin: short read of edh_webhook.cfg at %s; using defaults", path);
 		return;
 	}
 	fclose(f);
@@ -290,12 +307,14 @@ static void load_edh_webhook_cfg(void)
 			edh_strncpy_z(g_language, sizeof(g_language), valpart.c_str());
 		}
 	}
-	debug_log_fmt(
-		"[edh_plugin] config loaded: language=%s color=%s player=%s webhook=%s",
+	edh_plugin_log_fmt(
+		SCS_LOG_TYPE_message,
+		"edh_plugin: settings from %s — language=%s embed_color=%s player_name=%s discord.webhook=%s",
+		path,
 		g_language,
 		g_cfg_color,
 		g_cfg_player,
-		g_discord_webhook[0] ? "yes" : "no"
+		g_discord_webhook[0] ? "set" : "(empty)"
 	);
 }
 
@@ -369,7 +388,7 @@ static bool edh_post_discord_webhook_json(const std::string &json_utf8)
 
 	const DWORD url_len = static_cast<DWORD>(wcslen(wurl.data()));
 	if (!WinHttpCrackUrl(wurl.data(), url_len, 0u, &uc)) {
-		debug_log_fmt("[edh_plugin] WinHttpCrackUrl failed: %lu", GetLastError());
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] WinHttpCrackUrl failed: %lu", GetLastError());
 		return false;
 	}
 
@@ -399,13 +418,13 @@ static bool edh_post_discord_webhook_json(const std::string &json_utf8)
 		0u
 	);
 	if (!h_session) {
-		debug_log_fmt("[edh_plugin] WinHttpOpen failed: %lu", GetLastError());
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] WinHttpOpen failed: %lu", GetLastError());
 		return false;
 	}
 
 	HINTERNET h_connect = WinHttpConnect(h_session, host.c_str(), port, 0u);
 	if (!h_connect) {
-		debug_log_fmt("[edh_plugin] WinHttpConnect failed: %lu", GetLastError());
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] WinHttpConnect failed: %lu", GetLastError());
 		WinHttpCloseHandle(h_session);
 		return false;
 	}
@@ -420,7 +439,7 @@ static bool edh_post_discord_webhook_json(const std::string &json_utf8)
 		open_flags
 	);
 	if (!h_request) {
-		debug_log_fmt("[edh_plugin] WinHttpOpenRequest failed: %lu", GetLastError());
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] WinHttpOpenRequest failed: %lu", GetLastError());
 		WinHttpCloseHandle(h_connect);
 		WinHttpCloseHandle(h_session);
 		return false;
@@ -433,7 +452,7 @@ static bool edh_post_discord_webhook_json(const std::string &json_utf8)
 		    static_cast<DWORD>(-1),
 		    WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE
 	    )) {
-		debug_log_fmt("[edh_plugin] WinHttpAddRequestHeaders failed: %lu", GetLastError());
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] WinHttpAddRequestHeaders failed: %lu", GetLastError());
 		WinHttpCloseHandle(h_request);
 		WinHttpCloseHandle(h_connect);
 		WinHttpCloseHandle(h_session);
@@ -451,7 +470,7 @@ static bool edh_post_discord_webhook_json(const std::string &json_utf8)
 		0u
 	);
 	if (!ok) {
-		debug_log_fmt("[edh_plugin] WinHttpSendRequest failed: %lu", GetLastError());
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] WinHttpSendRequest failed: %lu", GetLastError());
 		WinHttpCloseHandle(h_request);
 		WinHttpCloseHandle(h_connect);
 		WinHttpCloseHandle(h_session);
@@ -477,11 +496,11 @@ static bool edh_post_discord_webhook_json(const std::string &json_utf8)
 	WinHttpCloseHandle(h_session);
 
 	if (!ok) {
-		debug_log_fmt("[edh_plugin] WinHttpReceiveResponse failed: %lu", GetLastError());
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] WinHttpReceiveResponse failed: %lu", GetLastError());
 		return false;
 	}
 	if (status < 200u || status >= 300u) {
-		debug_log_fmt("[edh_plugin] Discord webhook HTTP status %lu", static_cast<unsigned long>(status));
+		edh_plugin_log_fmt(SCS_LOG_TYPE_warning, "[edh_plugin] Discord webhook HTTP status %lu", static_cast<unsigned long>(status));
 		return false;
 	}
 	return true;
@@ -593,6 +612,30 @@ static void debug_log_fmt(const char *const fmt, ...)
 #endif
 	va_end(ap);
 	debug_log_line(buf);
+}
+
+static void edh_plugin_log(const scs_log_type_t type, const char *const text)
+{
+	debug_log_line(text);
+	if (game_log) {
+		game_log(type, text);
+	}
+}
+
+static void edh_plugin_log_fmt(const scs_log_type_t type, const char *const fmt, ...)
+{
+	char buf[1024];
+	va_list ap;
+	va_start(ap, fmt);
+#if defined(_WIN32)
+	if (vsnprintf_s(buf, sizeof(buf), _TRUNCATE, fmt, ap) < 0) {
+		edh_strncpy_z(buf, sizeof(buf), "(edh_plugin_log_fmt error)");
+	}
+#else
+	vsnprintf(buf, sizeof(buf), fmt, ap);
+#endif
+	va_end(ap);
+	edh_plugin_log(type, buf);
 }
 
 static void merge_job_attribute(const scs_named_value_t *const c)
@@ -879,14 +922,14 @@ static void append_job_delivered_line(const scs_named_value_t *const attrs)
 	const bool posted = edh_post_discord_webhook_json(out);
 	if (g_discord_webhook[0] != '\0') {
 		if (posted) {
-			debug_log_line("Sent job completion payload to Discord webhook.");
+			edh_plugin_log(SCS_LOG_TYPE_message, "edh_plugin: sent job completion payload to Discord webhook.");
 		}
 		else {
-			debug_log_line("Failed to send job completion payload to Discord webhook.");
+			edh_plugin_log(SCS_LOG_TYPE_warning, "edh_plugin: failed to send job completion payload to Discord webhook.");
 		}
 	}
 	else {
-		debug_log_line("Job completed; Discord webhook URL not configured.");
+		edh_plugin_log(SCS_LOG_TYPE_message, "edh_plugin: job completed; discord.webhook not set — nothing sent.");
 	}
 }
 
@@ -910,6 +953,8 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	}
 
 	const scs_telemetry_init_params_v101_t *const version_params = static_cast<const scs_telemetry_init_params_v101_t *>(params);
+	game_log = version_params->common.log;
+
 	g_game_id[0] = '\0';
 	if (version_params->common.game_id) {
 		edh_strncpy_z(g_game_id, sizeof(g_game_id), version_params->common.game_id);
@@ -918,10 +963,9 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	ensure_edh_webhook_cfg();
 	load_edh_webhook_cfg();
 
-	game_log = version_params->common.log;
-
-	debug_log_fmt(
-		"telemetry init: game=%s id=%s ver=%u.%u",
+	edh_plugin_log_fmt(
+		SCS_LOG_TYPE_message,
+		"edh_plugin: telemetry init game=%s id=%s ver=%u.%u",
 		version_params->common.game_name ? version_params->common.game_name : "?",
 		version_params->common.game_id ? version_params->common.game_id : "?",
 		static_cast<unsigned>(SCS_GET_MAJOR_VERSION(version_params->common.game_version)),
@@ -929,26 +973,24 @@ SCSAPI_RESULT scs_telemetry_init(const scs_u32_t version, const scs_telemetry_in
 	);
 
 	if (version_params->register_for_event(SCS_TELEMETRY_EVENT_configuration, telemetry_configuration, NULL) != SCS_RESULT_ok) {
-		debug_log_line("WARNING: register_for_event(configuration) failed — job/truck fields may stay unknown");
+		edh_plugin_log(
+			SCS_LOG_TYPE_warning,
+			"edh_plugin: register_for_event(configuration) failed — job/truck fields may stay unknown"
+		);
 	}
 
 	if (version_params->register_for_event(SCS_TELEMETRY_EVENT_gameplay, telemetry_gameplay_event, NULL) != SCS_RESULT_ok) {
-		debug_log_line("ERROR: register_for_event(SCS_TELEMETRY_EVENT_gameplay) failed");
-		version_params->common.log(SCS_LOG_TYPE_error, "edh_plugin: register_for_event(gameplay) failed");
+		edh_plugin_log(SCS_LOG_TYPE_error, "edh_plugin: register_for_event(gameplay) failed");
 		return SCS_RESULT_generic_error;
 	}
 
-	debug_log_line("registered configuration + gameplay");
-	game_log(
-		SCS_LOG_TYPE_message,
-		"edh_plugin: active. Config & log: Documents\\Euro Truck Simulator 2 or Documents\\American Truck Simulator (edh_webhook.cfg, EDH_webhook.log)"
-	);
+	edh_plugin_log(SCS_LOG_TYPE_message, "edh_plugin: registered configuration + gameplay events; EDH_webhook.log still records delivery webhook status");
 	return SCS_RESULT_ok;
 }
 
 SCSAPI_VOID scs_telemetry_shutdown(void)
 {
-	debug_log_line("edh_plugin: scs_telemetry_shutdown");
+	edh_plugin_log(SCS_LOG_TYPE_message, "edh_plugin: shutdown");
 	game_log = NULL;
 }
 
@@ -958,10 +1000,10 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason_for_call, LPVOID reserved)
 	(void)module;
 	(void)reserved;
 	if (reason_for_call == DLL_PROCESS_ATTACH) {
-		debug_log_line("[edh_plugin] DLL_PROCESS_ATTACH (plugin file loaded by game)");
+		edh_plugin_log(SCS_LOG_TYPE_message, "edh_plugin: DLL loaded (telemetry init follows)");
 	}
 	else if (reason_for_call == DLL_PROCESS_DETACH) {
-		debug_log_line("[edh_plugin] DLL_PROCESS_DETACH");
+		edh_plugin_log(SCS_LOG_TYPE_message, "edh_plugin: DLL unloaded");
 	}
 	return TRUE;
 }
