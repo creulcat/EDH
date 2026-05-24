@@ -1,0 +1,64 @@
+{
+    "content": null,
+    "embeds": [
+      {
+        "title": "Tow Hitch delivered event",
+        "description": "Player delivered a job",
+        "color": 15882495,
+        "fields": [
+          {
+            "name": "Truck",
+            "value": "{truck}"
+          },
+          {
+            "name": "Cargo",
+            "value": "{cargo}"
+          },
+          {
+            "name": "Starting location",
+            "value": "{startingLocation}"
+          },
+          {
+            "name": "Destination",
+            "value": "{destination}"
+          },
+          {
+            "name": "Revenue",
+            "value": "{revenue}"
+          },
+          {
+            "name": "Earned XP",
+            "value": "{earnedXp}"
+          },
+          {
+            "name": "Cargo damage",
+            "value": "{cargoDamage}"
+          },
+          {
+            "name": "Distance driven (km)",
+            "value": "{distanceDriven}"
+          },
+          {
+            "name": "Delivery time",
+            "value": "{deliveryTime}"
+          },
+          {
+            "name": "Auto-park used",
+            "value": "{autoparkUsed}"
+          },
+          {
+            "name": "Auto-load used",
+            "value": "{autoloadUsed}"
+          }
+        ],
+        "author": {
+          "name": "Tow Hitch",
+          "url": "https://eurotrucksimulator2.com/",
+          "icon_url": "https://eurotrucksimulator2.com/images/logo.png"
+        },
+        "timestamp": "{timestamp}"
+      }
+    ],
+    "attachments": []
+  }
+  

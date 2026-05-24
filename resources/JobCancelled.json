@@ -1,0 +1,28 @@
+{
+    "content": null,
+    "embeds": [
+      {
+        "title": "Tow Hitch cancellation event",
+        "description": "Player cancelled a job",
+        "color": 15882495,
+        "fields": [
+          {
+            "name": "Truck",
+            "value": "{truck}"
+          },
+          {
+            "name": "Cancellation penalty",
+            "value": "{penalty}"
+          }
+        ],
+        "author": {
+          "name": "Tow Hitch",
+          "url": "https://eurotrucksimulator2.com/",
+          "icon_url": "https://eurotrucksimulator2.com/images/logo.png"
+        },
+        "timestamp": "{timestamp}"
+      }
+    ],
+    "attachments": []
+  }
+  

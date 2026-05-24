@@ -1,0 +1,40 @@
+{
+    "content": null,
+    "embeds": [
+      {
+        "title": "Tow Hitch toll event",
+        "description": "Tollgate passed",
+        "color": 15882495,
+        "fields": [
+          {
+            "name": "Truck",
+            "value": "{truck}"
+          },
+          {
+            "name": "Cargo",
+            "value": "{cargo}"
+          },
+          {
+            "name": "Starting location",
+            "value": "{startingLocation}"
+          },
+          {
+            "name": "Destination",
+            "value": "{destination}"
+          },
+          {
+            "name": "Toll amount",
+            "value": "{tollAmount}"
+          }
+        ],
+        "author": {
+          "name": "Tow Hitch",
+          "url": "https://eurotrucksimulator2.com/",
+          "icon_url": "https://eurotrucksimulator2.com/images/logo.png"
+        },
+        "timestamp": "{timestamp}"
+      }
+    ],
+    "attachments": []
+  }
+  

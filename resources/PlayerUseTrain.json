@@ -1,0 +1,48 @@
+{
+    "content": null,
+    "embeds": [
+      {
+        "title": "Tow Hitch train event",
+        "description": "Player used train",
+        "color": 15882495,
+        "fields": [
+          {
+            "name": "Truck",
+            "value": "{truck}"
+          },
+          {
+            "name": "Cargo",
+            "value": "{cargo}"
+          },
+          {
+            "name": "Starting location",
+            "value": "{startingLocation}"
+          },
+          {
+            "name": "Destination",
+            "value": "{destination}"
+          },
+          {
+            "name": "Train fare",
+            "value": "{useAmount}"
+          },
+          {
+            "name": "Train departure",
+            "value": "{useStartingLocation}"
+          },
+          {
+            "name": "Train arrival",
+            "value": "{useDestination}"
+          }
+        ],
+        "author": {
+          "name": "Tow Hitch",
+          "url": "https://eurotrucksimulator2.com/",
+          "icon_url": "https://eurotrucksimulator2.com/images/logo.png"
+        },
+        "timestamp": "{timestamp}"
+      }
+    ],
+    "attachments": []
+  }
+  

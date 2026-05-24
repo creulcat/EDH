@@ -1,133 +1,194 @@
-# EDH (Eurotruck Discord Hook)
+# Tow Hitch
 
-EDH is a **telemetry plugin** for **Euro Truck Simulator 2** and **American Truck Simulator**. When you **complete a delivery**, it sends a **Discord webhook** request with a rich embed: player name, origin and destination cities, distance, truck, cargo, and job reward. The in-game name used in materials is **Euro Truck Log** (see embedded embed templates).
+Tow Hitch is a telemetry plugin for **Euro Truck Simulator 2** and **American Truck Simulator**. When something happens in-game — a job delivered, a fine paid, a ferry taken — it sends a message to a webhook you configure. The included templates are set up for Discord, but any service that accepts a JSON POST will work.
 
-The plugin uses the **SCS Telemetry SDK** (API version 1.01), listens for **configuration** updates (current job and truck) and **gameplay** events, and posts **HTTPS JSON** to Discord via **WinHTTP** on Windows.
+## Installation
 
-## What it does
+### Download
 
-- Subscribes to telemetry **configuration** for the active **job** (source/destination city, cargo) and **truck** (brand and model).
-- On **`job_delivered`**, builds a JSON body from an embedded Discord embed template, fills placeholders (see below), and **POST**s it to the URL in `discord.webhook`.
-- Writes short status lines to **`EDH_webhook.log`** in your game profile folder (success/failure of the webhook call — not full JSON or continuous gameplay spam).
-- Optionally creates **`edh_webhook.cfg`** the first time, using the **embedded default** from the build, if the file does not exist yet.
-
-## Installing in the game
-
-1. Install the **latest [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist)** for **x64** (the “latest supported” package from Microsoft). The plugin is a native Windows DLL and needs a current VC++ runtime; if the game fails to load the plugin or you see missing-DLL errors, update this redistributable first.
-2. Obtain **`edh_plugin.dll`** (build from this repository or use a provided release).
-3. Copy the DLL into the game’s **64-bit plugins** directory:
-   - **ETS2:** `...\Euro Truck Simulator 2\bin\win_x64\plugins\`
-   - **ATS:** `...\American Truck Simulator\bin\win_x64\plugins\`
-4. Start the game. The plugin loads with the telemetry API; check **`game.log.txt`** or `EDH_webhook.log` to confirm it initialized.
-
-Details on plugin paths and developer commands (for example SDK reload) are in `tools/scs_sdk/readme.txt` once you have the SDK unpacked locally.
-
-## Configuration
-
-### Where the config lives
-
-Settings are read from **`edh_webhook.cfg`** in your **Documents** game profile folder:
-
-- **ETS2:** `%USERPROFILE%\Documents\Euro Truck Simulator 2\edh_webhook.cfg`
-- **ATS:** `%USERPROFILE%\Documents\American Truck Simulator\edh_webhook.cfg`
-
-If **`edh_webhook.cfg` is missing** when the plugin starts, it is **created** in that folder from the **embedded default** (`resources/default.cfg` at build time). Edit the file in a text editor; lines starting with `#` are comments.
-
-### Config keys
-
-| Key | Meaning |
-|-----|---------|
-| `language` | Chooses the embedded Discord template: **`EN`**, **`NL`**, or any other value (falls back to the generic `embed.json` template). Matching is case-insensitive for `EN` and `NL`. |
-| `discord.webhook` | Full **HTTPS** URL of your [Discord incoming webhook](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks). If empty, deliveries are still detected but nothing is sent (a line is written to the log). |
-| `discord.embed.color` | Value substituted into the embed JSON as `{cfg.color}` (default `000000`). Must match what your embed JSON expects (the shipped templates use this as a string placeholder in JSON). |
-| `discord.embed.playername` | Display name substituted as `{cfg.player}`. |
-
-Values can be quoted, for example `language = "EN"`.
-
-### Discord webhook
-
-In Discord: channel **Settings → Integrations → Webhooks → New Webhook**, then copy the webhook URL into `discord.webhook`. Anyone with this URL can post to the channel, so treat it like a secret.
-
-### Embed templates and languages
-
-At **build time**, these files are embedded into the DLL (`cmake/edh_gen_embedded.cmake`):
-
-- `resources/default.cfg` — default `edh_webhook.cfg` when created on disk
-- `resources/embed.json` — fallback template when `language` is not `EN` or `NL`
-- `resources/embed_EN.json` — used when `language` is **EN**
-- `resources/embed_NL.json` — used when `language` is **NL** (Dutch field labels such as *Speler*, *Startpunt*, *Eindpunt*, etc.)
-
-To change the layout or text of Discord messages, edit those JSON files and **rebuild** the plugin.
-
-### Placeholders in the embed JSON
-
-The plugin performs simple string replacement on the embedded template before sending:
-
-| Placeholder | Source |
-|-------------|--------|
-| `{cfg.color}` | `discord.embed.color` |
-| `{cfg.player}` | `discord.embed.playername` |
-| `{timestamp}` | Current time (UTC, ISO-8601 style) |
-| `{position_start}` | Job source city from telemetry |
-| `{position_end}` | Job destination city from telemetry |
-| `{distance}` | Delivered distance, formatted using your game UI preferences (see below) |
-| `{truck}` | Truck brand and model from telemetry |
-| `{cargo}` | Cargo name from telemetry |
-| `{gains}` | Job revenue, with currency prefix from your game settings (see below) |
-
-### Distance and currency (aligned with the game)
-
-The plugin reads **`config.cfg`** in the same **Documents** profile folder as the game. It uses:
-
-- **`uset g_mph`** — if you use **miles** in the UI, distance is shown in **mi**; otherwise **km**.
-- **`uset g_currency`** — maps the game’s currency index to a **prefix** for `{gains}` (e.g. € for ETS2 defaults, `$` for ATS when unset), consistent with the game’s own mapping in the plugin source.
-
-If something is missing from telemetry, the template may show `?` for that field.
-
-## Logs and troubleshooting
-
-| Location | What you see |
-|----------|----------------|
-| **`EDH_webhook.log`** | Same profile folder as `edh_webhook.cfg`. Timestamped lines: plugin load, config load, webhook send success/failure. |
-| **`game.log.txt`** | The **default Euro Truck Simulator 2 / American Truck Simulator log**: same **Documents** profile folder as `edh_webhook.cfg` (e.g. `%USERPROFILE%\Documents\Euro Truck Simulator 2\game.log.txt`). SCS and the game write here; plugin messages from the telemetry SDK’s log callback appear in this file. |
-| **DebugView** (Windows) | With global Win32 capture, `OutputDebugString` lines from the plugin. |
-
-If you change `edh_webhook.cfg`, restart the game (or use SDK reload/reinit **only if** telemetry plugins are loaded — see SCS SDK readme) so settings are read again.
-
-## Repository layout and ignored paths
-
-The following paths are in **`.gitignore`** and are not committed:
-
-- **`build/`** — local CMake build tree.
-- **`tools/`** — place the **SCS SDK** here as `tools/scs_sdk` with headers under `tools/scs_sdk/include`.
-
-## Building from source
+Download the latest release from [GitHub Releases](https://github.com/creulcat/EDH/releases) as a `.zip` file containing `Towhitch.dll` and example config files.
 
 ### Prerequisites
 
-- **CMake** 3.16 or newer  
-- **C++11** toolchain on **Windows** (the plugin uses **WinHTTP**)  
-- **SCS Telemetry SDK** extracted so that `tools/scs_sdk/include` exists (e.g. contains `scssdk.h`)
+- Euro Truck Simulator 2 or American Truck Simulator (64-bit)
+- Windows: [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist) (x64) — install if Windows reports a missing runtime when loading the plugin
 
-### Commands
+### Plugin (DLL)
 
-From the repository root:
+**Windows**
 
-```powershell
-mkdir build
-cd build
-cmake ..
-cmake --build . --config Release
+Copy `Towhitch.dll` to:
+
+```
+Euro Truck Simulator 2\bin\win_x64\plugins\
 ```
 
-With Visual Studio–style generators, the DLL is typically:
+Create the `plugins` folder if it does not exist. For ATS, use the equivalent path under `American Truck Simulator\`.
 
-`build/Release/edh_plugin.dll`
+**Linux / macOS**
 
-Optional install (install prefix as usual for CMake):
+See the [SCS Telemetry SDK readme](https://modding.scssoft.com/wiki/Documentation/Engine/SDK/Telemetry) for plugin install paths on your platform.
 
-```powershell
-cmake --install . --config Release
+### Config and JSON files
+
+Copy `Towhitch.cfg` and the `.json` payload files to your **game home directory** (the folder that contains `config.cfg`), or to `plugins/` inside that folder.
+
+Paths in `jsonFile` are relative to the folder where `Towhitch.cfg` lives.
+
+Restart the game after changing config — settings are loaded when the plugin starts.
+
+## Functionality
+
+Tow Hitch listens for gameplay events and POSTs a JSON payload to the matching webhook URL. You can configure one or more webhooks per event.
+
+### Supported events
+
+| Event | Also accepted as |
+|---|---|
+| Job cancelled | `job.cancelled`, `Canceljob` |
+| Job delivered | `job.delivered`, `Finishjob` |
+| Player fined | `player.fined` |
+| Tollgate paid | `player.tollgate.paid` |
+| Ferry used | `player.use.ferry` |
+| Train used | `player.use.train` |
+
+### Placeholders
+
+Placeholders go in your JSON template files and are replaced when the webhook is sent. If a value is missing, the locale `notAvailable` text is used instead (default: `-N/A-`).
+
+**Available on all events** (once truck/job data is known):
+
+| Placeholder | Description |
+|---|---|
+| `{truck}` | Truck brand and model |
+| `{cargo}` | Cargo name |
+| `{startingLocation}` | Job source city |
+| `{destination}` | Job destination city |
+| `{timestamp}` | Current UTC time (ISO 8601) |
+
+**Job cancelled**
+
+| Placeholder | Description |
+|---|---|
+| `{penalty}` | Cancellation penalty (formatted currency) |
+
+**Job delivered**
+
+| Placeholder | Description |
+|---|---|
+| `{revenue}` | Delivery revenue (formatted currency) |
+| `{earnedXp}` | XP earned |
+| `{cargoDamage}` | Cargo damage (e.g. `2%`) |
+| `{distanceDriven}` | Distance driven in km |
+| `{deliveryTime}` | Time spent on the job (in-game duration) |
+| `{autoparkUsed}` | Auto-park used (`true` / `false`) |
+| `{autoloadUsed}` | Auto-load used (`true` / `false`) |
+
+**Player fined**
+
+| Placeholder | Description |
+|---|---|
+| `{offence}` | Offence type |
+| `{fineAmount}` | Fine amount (formatted currency) |
+
+**Tollgate paid**
+
+| Placeholder | Description |
+|---|---|
+| `{tollAmount}` | Toll amount (formatted currency) |
+
+**Ferry / train used**
+
+| Placeholder | Description |
+|---|---|
+| `{useAmount}` | Fare amount (formatted currency) |
+| `{useStartingLocation}` | Departure location |
+| `{useDestination}` | Arrival location |
+
+Currency symbols are taken from your active profile's in-game currency setting.
+
+### Locale
+
+An optional `locale:` block controls translated text for durations (day/hour/minute labels) and the fallback shown for empty values.
+
+Built-in presets: `en`, `nl`, `de`, `fr`. You can also override individual keys on top of a preset.
+
+```yaml
+locale:
+    name: "nl"
+    notAvailable: "-n.v.t.-"
 ```
 
-Copy **`edh_plugin.dll`** into the game’s `bin\win_x64\plugins\` folder as described above.
+## Configuration
+
+Edit `Towhitch.cfg` to set your webhook URLs and choose which events to send. Each `event:` block maps one in-game event to one webhook.
+
+Example:
+
+```yaml
+locale:
+    name: "en"
+
+event:
+    name: "JobDelivered"
+    webhookURL: "https://discord.com/api/webhooks/YOUR_ID/YOUR_TOKEN"
+    jsonFile: "JobDelivered.json"
+```
+
+You can add multiple `event:` blocks for the same event type if you want to notify more than one webhook.
+
+Example JSON templates for Discord embeds are in the [`resources/`](resources/) folder:
+
+- `JobCancelled.json`
+- `JobDelivered.json`
+- `PlayerFined.json`
+- `PlayerTollgatePaid.json`
+- `PlayerUseFerry.json`
+- `PlayerUseTrain.json`
+
+A full commented example config is in [`resources/Towhitch.cfg`](resources/Towhitch.cfg).
+
+## Discord & webhooks
+
+### Discord
+
+1. In your Discord server, go to **Server Settings → Integrations → Webhooks**.
+2. Create a webhook and copy its URL.
+3. Paste the URL into the `webhookURL` field in `Towhitch.cfg` for the events you want.
+
+The sample JSON files use [Discord's webhook embed format](https://discord.com/developers/docs/resources/webhook). Customize the title, fields, and colors to taste.
+
+Keep your webhook URL private — anyone with the URL can post to that channel.
+
+### Other services
+
+Tow Hitch sends a `POST` request with `Content-Type: application/json`. Any endpoint that accepts JSON in the request body can be used; shape the payload in your `.json` file to match what your service expects.
+
+## Building from source
+
+If you prefer to build the plugin yourself:
+
+**Requirements**
+
+- CMake 3.16 or newer
+- A C++17 compiler
+- Windows: Visual Studio 2019 or newer (or Ninja + MSVC)
+- Linux / macOS: libcurl development libraries
+
+**Build**
+
+Windows:
+
+```powershell
+.\scripts\build.ps1
+```
+
+Linux / macOS:
+
+```bash
+./scripts/build.sh
+```
+
+The built plugin is copied to `dist/` (e.g. `dist/Towhitch.dll`).
+
+To build from source you also need the SCS Telemetry SDK unpacked under `tools/scs_sdk/`. Download it from the [SCS modding wiki](https://modding.scssoft.com/wiki/Documentation/Engine/SDK/Telemetry).

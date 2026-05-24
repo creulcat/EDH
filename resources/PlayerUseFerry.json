@@ -1,0 +1,48 @@
+{
+    "content": null,
+    "embeds": [
+      {
+        "title": "Tow Hitch ferry event",
+        "description": "Player used ferry",
+        "color": 15882495,
+        "fields": [
+          {
+            "name": "Truck",
+            "value": "{truck}"
+          },
+          {
+            "name": "Cargo",
+            "value": "{cargo}"
+          },
+          {
+            "name": "Starting location",
+            "value": "{startingLocation}"
+          },
+          {
+            "name": "Destination",
+            "value": "{destination}"
+          },
+          {
+            "name": "Ferry fare",
+            "value": "{useAmount}"
+          },
+          {
+            "name": "Ferry departure",
+            "value": "{useStartingLocation}"
+          },
+          {
+            "name": "Ferry arrival",
+            "value": "{useDestination}"
+          }
+        ],
+        "author": {
+          "name": "Tow Hitch",
+          "url": "https://eurotrucksimulator2.com/",
+          "icon_url": "https://eurotrucksimulator2.com/images/logo.png"
+        },
+        "timestamp": "{timestamp}"
+      }
+    ],
+    "attachments": []
+  }
+  

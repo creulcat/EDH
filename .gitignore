@@ -1,2 +1,5 @@
+/.vs
+/.cursor
 /tools
 /build
+/dist

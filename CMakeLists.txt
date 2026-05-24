@@ -1,47 +1,69 @@
 cmake_minimum_required(VERSION 3.16)
-project(edh_plugin LANGUAGES CXX)
+project(Towhitch LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(SCS_SDK_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/tools/scs_sdk/include")
+set(SCS_SDK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/tools/scs_sdk")
+set(SCS_SDK_INCLUDE "${SCS_SDK_ROOT}/include")
 
-set(EDH_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
-set(EDH_GEN_CPP "${EDH_GEN_DIR}/edh_embedded_resources.cpp")
-set(EDH_GEN_H "${EDH_GEN_DIR}/edh_embedded_resources.h")
+if(NOT EXISTS "${SCS_SDK_INCLUDE}/scssdk_telemetry.h")
+    message(FATAL_ERROR
+        "SCS Telemetry SDK not found.\n"
+        "Download it from https://modding.scssoft.com/wiki/Documentation/Engine/SDK/Telemetry\n"
+        "and extract so that this file exists:\n"
+        "  ${SCS_SDK_INCLUDE}/scssdk_telemetry.h"
+    )
+endif()
 
-add_custom_command(
-	OUTPUT "${EDH_GEN_CPP}" "${EDH_GEN_H}"
-	COMMAND ${CMAKE_COMMAND}
-		"-DEDH_RES_DIR=${CMAKE_CURRENT_SOURCE_DIR}/resources"
-		"-DEDH_OUT_DIR=${EDH_GEN_DIR}"
-		-P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/edh_gen_embedded.cmake"
-	DEPENDS
-		"${CMAKE_CURRENT_SOURCE_DIR}/resources/default.cfg"
-		"${CMAKE_CURRENT_SOURCE_DIR}/resources/embed.json"
-		"${CMAKE_CURRENT_SOURCE_DIR}/resources/embed_EN.json"
-		"${CMAKE_CURRENT_SOURCE_DIR}/resources/embed_NL.json"
-		"${CMAKE_CURRENT_SOURCE_DIR}/cmake/edh_gen_embedded.cmake"
-	COMMENT "Generating embedded resources"
-	VERBATIM
+add_library(Towhitch SHARED src/Towhitch.cpp)
+
+target_include_directories(Towhitch PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${SCS_SDK_INCLUDE}"
+    "${SCS_SDK_INCLUDE}/common"
+    "${SCS_SDK_INCLUDE}/amtrucks"
+    "${SCS_SDK_INCLUDE}/eurotrucks2"
 )
 
-add_library(edh_plugin SHARED edh_plugin.cpp "${EDH_GEN_CPP}")
-set_source_files_properties("${EDH_GEN_CPP}" PROPERTIES GENERATED TRUE)
-
-target_include_directories(edh_plugin PRIVATE "${SCS_SDK_INCLUDE}" "${EDH_GEN_DIR}")
-
-if(MSVC)
-	target_compile_definitions(edh_plugin PRIVATE _CRT_SECURE_NO_WARNINGS)
-	target_link_options(edh_plugin PRIVATE "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/edh_plugin.def")
-elseif(WIN32)
-	target_link_options(edh_plugin PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/edh_plugin.def")
-endif()
-
 if(WIN32)
-	target_link_libraries(edh_plugin PRIVATE winhttp)
+    target_link_libraries(Towhitch PRIVATE winhttp shell32)
+    if(MSVC)
+        target_compile_definitions(Towhitch PRIVATE _CRT_SECURE_NO_WARNINGS)
+        target_link_options(Towhitch PRIVATE "/DEF:${CMAKE_CURRENT_SOURCE_DIR}/Towhitch.def")
+    else()
+        target_link_options(Towhitch PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Towhitch.def")
+    endif()
+else()
+    find_package(CURL REQUIRED)
+    target_link_libraries(Towhitch PRIVATE CURL::libcurl)
+
+    set_target_properties(Towhitch PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        CXX_VISIBILITY_PRESET hidden
+        VISIBILITY_INLINES_HIDDEN ON
+    )
 endif()
 
-set_target_properties(edh_plugin PROPERTIES PREFIX "" OUTPUT_NAME "edh_plugin")
+# SCS plugins are named Towhitch.dll / Towhitch.so / Towhitch.dylib (no lib prefix).
+set_target_properties(Towhitch PROPERTIES PREFIX "")
 
-install(TARGETS edh_plugin RUNTIME DESTINATION .)
+if(NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+endif()
+
+set(TOWHITCH_DIST_DIR "${CMAKE_SOURCE_DIR}/dist")
+
+add_custom_target(dist
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${TOWHITCH_DIST_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:Towhitch>" "${TOWHITCH_DIST_DIR}/$<TARGET_FILE_NAME:Towhitch>"
+    DEPENDS Towhitch
+    COMMENT "Copy Towhitch plugin to dist/"
+)
+
+install(TARGETS Towhitch
+    RUNTIME DESTINATION "."
+    LIBRARY DESTINATION "."
+)

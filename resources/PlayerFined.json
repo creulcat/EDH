@@ -1,0 +1,44 @@
+{
+    "content": null,
+    "embeds": [
+      {
+        "title": "Tow Hitch test event",
+        "description": "Default template with every supported placeholder. Empty values are shown as -N/A- at send time.",
+        "color": 15882495,
+        "fields": [
+          {
+            "name": "Truck",
+            "value": "{truck}"
+          },
+          {
+            "name": "Cargo",
+            "value": "{cargo}"
+          },
+          {
+            "name": "Starting location",
+            "value": "{startingLocation}"
+          },
+          {
+            "name": "Destination",
+            "value": "{destination}"
+          },
+          {
+            "name": "Offence",
+            "value": "{offence}"
+          },
+          {
+            "name": "Fine amount",
+            "value": "{fineAmount}"
+          }
+        ],
+        "author": {
+          "name": "Tow Hitch",
+          "url": "https://eurotrucksimulator2.com/",
+          "icon_url": "https://eurotrucksimulator2.com/images/logo.png"
+        },
+        "timestamp": "{timestamp}"
+      }
+    ],
+    "attachments": []
+  }
+  
